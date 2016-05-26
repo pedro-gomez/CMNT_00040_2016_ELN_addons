@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+
+        <record id="stock_location_route_form_view" model="ir.ui.view">
+            <field name="model">stock.location.route</field>
+            <field name="inherit_id" ref="stock.stock_location_route_form_view"/>
+            <field name="arch" type="xml">
+                <field name="sequence" position="after">
+                    <field name="orig_loc"/>
+                </field>
+            </field>
+        </record>
+
+<!--          <record id="view_picking_form" model="ir.ui.view">
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>
+            <field name="arch" type="xml">
+                <button name="action_assign" position="attributes">
+                    <attribute name="context">{'special_assign': True}</attribute>
+                </button>
+            </field>
+        </record>
+ -->
+         <record id="view_stock_quant_tree" model="ir.ui.view" >
+            <field name="name">stock.quant.tree</field>
+            <field name="model">stock.quant</field>
+            <field name="inherit_id" ref="stock.view_stock_quant_tree"/>
+            <field name="arch" type="xml">
+                <xpath expr="/tree" position="attributes">
+                    <attribute name="delete">1</attribute>
+                    <attribute name="context">{'force_unlink': True</attribute>
+                </xpath>
+            </field>
+        </record>
+
+        <record id="view_picking_type_form" model="ir.ui.view" >
+            <field name="model">stock.picking.type</field>
+            <field name="inherit_id" ref="stock.view_picking_type_form"/>
+            <field name="arch" type="xml">
+                <field name="warehouse_id" position="after">
+                    <field name="auto_transit"/>
+                </field>
+            </field>
+        </record>
+
+        <record id="view_picking_form" model="ir.ui.view">
+            <field name="model">stock.picking</field>
+            <field name="inherit_id" ref="stock.view_picking_form"/>
+            <field name="arch" type="xml">
+                <field name="origin" position="after">
+                    <field name="auto_transit"/>
+                </field>
+            </field>
+        </record>
+    </data>
+</openerp>

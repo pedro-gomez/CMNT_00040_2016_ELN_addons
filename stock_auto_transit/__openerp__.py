@@ -11,11 +11,15 @@
     'depends': [
         'base',
         'stock',
+        'stock_quant_merge',
     ],
     'contributors': [
         "Javier Colmenero Fernández <javier@comunitea.com>"
     ],
     "data": [
+        'views/stock_view.xml',
+        'wizard/reserve_transit_wzd_view.xml',
+        'wizard/stock_transfer_details.xml',
     ],
     "demo": [
     ],
