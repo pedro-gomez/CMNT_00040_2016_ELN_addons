@@ -183,13 +183,13 @@ class edi_export (orm.TransientModel):
             if not line.product_id.ean13:
                 errors += _('The product %s not have EAN.\n') % \
                     line.product_id.name
-            if invoice.partner_id.commercial_partner_id.edi_date_required and not \
-                    line.stock_move_id.date_expected:
-                errors += _('the line %s requires date expected in the move.') % line.product_id.name
-            '''if not line.stock_move_id.procurement_id.sale_line_id:
-                errors += _('The product %s not have a sale\n') % line.product_id.name
-            if not line.stock_move_id.picking_id:
-                errors += _('The product %s not have a picking\n') % line.product_id.name'''
+            #if invoice.partner_id.commercial_partner_id.edi_date_required and not \
+            #        line.stock_move_id.date_expected:
+            #    errors += _('the line %s requires date expected in the move.') % line.product_id.name
+            #if not line.stock_move_id.procurement_id.sale_line_id:
+            #    errors += _('The product %s not have a sale\n') % line.product_id.name
+            #if not line.stock_move_id.picking_id:
+            #    errors += _('The product %s not have a picking\n') % line.product_id.name
         if errors:
             raise orm.except_orm(_('Data error'), errors)
 
@@ -528,15 +528,23 @@ class edi_export (orm.TransientModel):
                 imp = line.invoice_line_tax_id and int(line.invoice_line_tax_id[0].amount * 100) or int('0')
                 imp = round(imp, 2)
                 line_data += self.parse_string(line.invoice_line_tax_id[0].edi_code or u'VAT', 3)
-                line_data += self.parse_number(imp, 5, 2)
-                line_data += self.parse_number((line.price_subtotal * (imp/100.0)), 18, 3)
+                if line.invoice_line_tax_id[0].edi_code and line.invoice_line_tax_id[0].edi_code == 'EXT':
+                    line_data += self.parse_number(False, 5, 2)
+                    line_data += self.parse_number(False, 18, 3)
+                else:
+                    line_data += self.parse_number(imp, 5, 2)
+                    line_data += self.parse_number((line.price_subtotal * (imp/100.0)), 18, 3)
             else:
             #revisar para coviran portugal, es posible que haya que poner ceros
                 line_data += 'EXT' + ' ' * 23
 
             # fecha de entrega
-            if line.stock_move_id.date_expected and line.partner_id.commercial_partner_id.edi_date_required:
-                line_data += self.parse_short_date(line.stock_move_id.picking_id.date_done[:10])
+            if line.partner_id.commercial_partner_id.edi_date_required:
+                if line.stock_move_id and (line.stock_move_id.picking_id.effective_date or line.stock_move_id.picking_id.date_done):
+                    date = line.stock_move_id.picking_id.effective_date or line.stock_move_id.picking_id.date_done
+                else:
+                    date = invoice.date_invoice
+                line_data += self.parse_short_date(date[:10])
             else:
                 line_data += self.parse_string(False, 8)
 
@@ -552,7 +560,7 @@ class edi_export (orm.TransientModel):
         total_data += self.parse_number(invoice.amount_untaxed + invoice.total_global_discounted + early_discount_amount, 18, 3)
         total_data += self.parse_number(invoice.amount_untaxed, 18, 3)
 
-        total_data += self.parse_number(invoice.amount_tax, 18, 3)
+        total_data += self.parse_number(invoice.amount_tax or '0', 18, 3)
         total_data += self.parse_number(invoice.total_global_discounted + early_discount_amount, 18, 3)
         total_data += self.parse_number('0', 18, 3)
         total_data += self.parse_number(invoice.amount_total, 18, 3)
@@ -563,9 +571,14 @@ class edi_export (orm.TransientModel):
         for tax in invoice.tax_line:
             tax_data = '\r\nTAX'
             tax_data += self.parse_string(tax.tax_id.edi_code or u'VAT', 3)
-            tax_data += self.parse_number(tax.tax_id.amount * 100, 5, 2)
-            tax_data += self.parse_number(tax.amount, 18, 3)
-            tax_data += self.parse_number(tax.base, 18, 3)
+            if tax.tax_id.edi_code and tax.tax_id.edi_code == 'EXT':
+                tax_data += self.parse_number(False, 5, 2)
+                tax_data += self.parse_number(False, 18, 3)
+                tax_data += self.parse_number(False, 18, 3)
+            else:
+                tax_data += self.parse_number(tax.tax_id.amount * 100, 5, 2)
+                tax_data += self.parse_number(tax.amount, 18, 3)
+                tax_data += self.parse_number(tax.base, 18, 3)
             f.write(tax_data)
 
         f.close()
@@ -752,8 +765,8 @@ class edi_export (orm.TransientModel):
                 file_name = '%s%sINV%s%s%s.ASC' % (path,os.sep, obj.company_id.edi_code, obj.number.replace('/','').replace('\\',''), obj.partner_id.commercial_partner_id.edi_filename)
                 self.parse_invoice(cr, uid, obj, file_name)
             self.create_doc(cr, uid, wizard.id, obj, file_name, context)
-            data_pool = self.pool.get('ir.model.data')
-            action_model,action_id = data_pool.get_object_reference(cr, uid, 'eln_edi', "act_edi_doc")
-            action = self.pool.get(action_model).read(cr, uid, action_id, context=context)
-
-        return action
+            # data_pool = self.pool.get('ir.model.data')
+            # action_model,action_id = data_pool.get_object_reference(cr, uid, 'eln_edi', "act_edi_doc")
+            # action = self.pool.get(action_model).read(cr, uid, action_id, context=context)
+        # return action
+        return
