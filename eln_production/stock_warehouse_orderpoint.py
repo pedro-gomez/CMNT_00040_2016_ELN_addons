@@ -19,31 +19,15 @@
 #
 ##############################################################################
 
-{
-    'name': "El Nogal - Stock",
-    'version': '1.0',
-    'category': 'Warehouse Management',
-    'description': """Stock module customizations for El Nogal""",
-    'author': 'Pedro Gómez',
-    'website': 'www.elnogal.com',
-    "depends": ['base',
-                'stock',
-                'eln_sale',  # Because of commitment_date group
-                'picking_invoice_rel',
-                'web_readonly_bypass'
-                # 'stock_location',
-                ],
-    "init_xml": [],
-    "data": [
-        'stock_view.xml',
-        'res_partner.xml',
-        # 'wizard/postmigration_reconcile_quants_view.xml',
-        'wizard/stock_picking_assign_multi.xml',
-        'wizard/stock_picking_unreserve_multi.xml',
-        'wizard/stock_picking_cancel_multi.xml',
-        'wizard/stock_invoice_onshipping_view.xml',
-    ],
-    "demo_xml": [],
-    "active": False,
-    "installable": True
-}
+from openerp.osv import osv, fields
+import openerp.addons.decimal_precision as dp
+
+class stock_warehouse_orderpoint(osv.osv):
+    _inherit = 'stock.warehouse.orderpoint'
+    _columns = {
+        'product_security_qty': fields.float('Security Quantity', required=True,
+            digits_compute=dp.get_precision('Product Unit of Measure'),
+            help="Security stock to determine priority on procurement orders."),
+    }
+    
+stock_warehouse_orderpoint()
