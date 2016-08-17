@@ -18,20 +18,12 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
+from openerp import models, fields
 
-from openerp.osv import orm, fields
-import logging
+class AccountAnalyticPlanInstance(models.Model):
 
-class account_analytic_plan_instance(orm.Model):
+    _inherit = 'account.analytic.plan.instance'
 
-    _inherit = "account.analytic.plan.instance"
-
-    _columns = {
-        'company_id': fields.many2one('res.company', 'Company')
-    }
-
-    _defaults = {
-        'company_id': lambda self, cr, uid, context: self.pool.get('res.users').browse(cr, uid, uid).company_id.id,
-    }
-
-
+    company_id = fields.Many2one(
+        'res.company', 'Company',
+        default=lambda self: self.env.user.company_id)

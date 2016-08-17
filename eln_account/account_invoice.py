@@ -81,16 +81,6 @@ class account_invoice(orm.Model):
             default=_default_currency, track_visibility='always'),
     }
 
-    def _refund_cleanup_lines(self, lines):
-        """ugly function to map all fields of account.invoice.line when creates refund invoice"""
-        res = super(account_invoice, self)._refund_cleanup_lines(lines)
-
-        for line in res:
-            if 'tax_id' in line[2]:
-                line[2]['tax_id'] = line[2]['tax_id'] and line[2]['tax_id'][0] or False
-
-        return res
-
 
 class account_invoice_line(orm.Model):
     _inherit = "account.invoice.line"
@@ -157,4 +147,21 @@ class account_invoice_line(orm.Model):
                 if price:
                     res['value']['price_unit'] = price
 
+        return res
+
+
+class AccountInvoiceRefund(orm.TransientModel):
+
+    _inherit = "account.invoice.refund"
+
+
+    @api.multi
+    def compute_refund(self, mode='refund'):
+        res = super(AccountInvoiceRefund, self).compute_refund(mode)
+        new_ids = res['domain'][1][2]
+        for invoice in self.env['account.invoice'].browse(new_ids):
+            orig = invoice.origin_invoices_ids
+            if not orig:
+                continue
+            invoice.payment_mode_id = orig[0].payment_mode_id
         return res

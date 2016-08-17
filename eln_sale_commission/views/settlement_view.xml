@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+
+        <record model="ir.ui.view" id="view_settlement_line_tree">
+            <field name="name">Settlement lines</field>
+            <field name="model">sale.commission.settlement.line</field>
+            <field name="inherit_id" ref="sale_commission.view_settlement_line_tree"/>
+            <field name="arch" type="xml">
+                <field name="date" position="before">
+                    <field name="partner_id"/>
+                    <field name="partner_shipping_id"/>
+                </field>
+                <field name="settled_amount" position="before">
+                    <field name="invoiced_amount"/>
+                </field>
+                <field name="settled_amount" position="after">
+                    <field name="atypical"/>
+                    <field name="total_atypical" sum="Atypical settled total"/>
+                </field>
+            </field>
+        </record>
+
+        <record id="view_settlement_line_search" model="ir.ui.view">
+            <field name="model">sale.commission.settlement.line</field>
+            <field name="inherit_id" ref="sale_commission.view_settlement_line_search"/>
+            <field name="arch" type="xml">
+                <field name="agent" position="after">
+                    <field name="partner_id"/>
+                    <field name="partner_shipping_id"/>
+                </field>
+                <filter string="Agent" position="after">
+                    <filter string="Commission" name="group_commission" context="{'group_by': 'commission'}"/>
+                    <filter string="Partner" name="group_partner" context="{'group_by': 'partner_id'}"/>
+                    <filter string="Shipping Address" name="group_partner_shipping" context="{'group_by': 'partner_shipping_id'}"/>
+                    <filter string="Invoice" name="group_invoice" context="{'group_by': 'invoice'}"/>
+                    <filter string="Settlement" name="group_settlement" context="{'group_by': 'settlement'}"/>
+                </filter>
+            </field>
+        </record>
+
+        <record id="action_settlemment_line" model="ir.actions.act_window" >
+            <field name="name">Settlement lines</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">sale.commission.settlement.line</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form,graph</field>
+        </record>
+
+        <menuitem name="Settlement Lines"
+                  id="menu_settlement_lines"
+                  parent="sale_commission.menu_sale_commissions_conf"
+                  action="action_settlemment_line"
+                  sequence="91"
+        />
+
+        <record id="view_settlement_form" model="ir.ui.view" >
+            <field name="model">sale.commission.settlement</field>
+            <field name="inherit_id" ref="sale_commission.view_settlement_form"/>
+            <field name="arch" type="xml">
+                <field name="date" position="before">
+                    <!-- <field name="partner_id"/> -->
+                    <field name="partner_shipping_id"/>
+                </field>
+                <field name="invoice" position="after">
+                    <field name="agent"/>
+                </field>  
+                <xpath expr="//field[@name='lines']/tree/field[@name='settled_amount']" position="before">
+                    <field name="invoiced_amount"/>
+                </xpath>  
+                <xpath expr="//field[@name='lines']/tree/field[@name='settled_amount']" position="after">
+                    <field name="atypical"/>
+                    <field name="total_atypical"/>
+                </xpath>  
+            </field>
+        </record>
+
+        <record id="action_settlemment" model="ir.actions.act_window" >
+            <field name="name">Settlement</field>
+            <field name="type">ir.actions.act_window</field>
+            <field name="res_model">sale.commission.settlement</field>
+            <field name="view_type">form</field>
+            <field name="view_mode">tree,form</field>
+        </record>
+
+        <menuitem name="Settlements"
+                  id="menu_settlement"
+                  parent="sale_commission.menu_sale_commissions_conf"
+                  action="action_settlemment"
+                  sequence="90"
+        />
+
+    </data>
+</openerp>
