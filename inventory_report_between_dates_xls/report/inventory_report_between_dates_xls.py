@@ -131,7 +131,7 @@ class InventoryReportBetweenDatesXls(report_xls):
             ('d', 1, 0, 'text', _('STOCK I'), None, style1),
             ('e', 1, 0, 'text', _('ENTRADAS'), None, style1),
             ('f', 1, 0, 'text', _('SALIDAS'), None, style1),
-            ('f', 1, 0, 'text', _('FINAL'), None, style1),
+            ('g', 1, 0, 'text', _('FINAL'), None, style1),
         ]
         row_data = self.xls_row_template(c_specs, [x[0] for x in c_specs])
         row_pos = self.xls_write_row(self.ws, row_pos, row_data)
