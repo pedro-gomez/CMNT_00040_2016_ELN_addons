@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+  <data>
+
+    <record id="inventory_report_between_dates_xls" model="ir.actions.report.xml">
+      <field name="name">Inventory Report Between Dates Report</field>
+      <field name="model">stock.move</field>
+      <field name="type">ir.actions.report.xml</field>
+      <field name="report_name">inventory_report_between_dates_xls</field>
+      <field name="report_type">xls</field>
+      <field name="auto" eval="False"/>
+    </record>
+
+  </data>
+</openerp>

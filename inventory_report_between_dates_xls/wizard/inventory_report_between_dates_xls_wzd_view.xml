@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<openerp>
+    <data>
+           
+      <record id="view_inventory_report_between_dates_xls_wzd" model="ir.ui.view">
+        <field name="name">Inventory Report Between Dates</field>
+        <field name="model">inventory.report.between.dates.xls.wzd</field>
+        <field name="type">form</field>
+        <field name="arch" type="xml">
+            <form string="Report Options">
+                <group col="2" colspan="2">
+                    <field name="date_from" />
+                    <field name="date_to" />
+                    <field name="location_id" />
+                    <newline />
+                    <button string="Cancel" special="cancel" icon="gtk-cancel" />
+                    <button name="create_xls_report" string="Print report" type="object" icon="gtk-print" default_focus="1" class="oe_highlight"/>
+                </group>
+            </form>
+        </field>
+      </record>
+
+      <record id="action_inventory_report_between_dates_xls_wzd" model="ir.actions.act_window">
+        <field name="name">Print Inventory Report Between Dates</field>
+        <field name="type">ir.actions.act_window</field>
+        <field name="res_model">inventory.report.between.dates.xls.wzd</field>
+        <field name="view_type">form</field>
+        <field name="view_mode">form</field>
+        <field name="view_id" ref="view_inventory_report_between_dates_xls_wzd"/>
+        <field name="target">new</field>
+      </record>
+
+      <menuitem action="action_inventory_report_between_dates_xls_wzd" name="Inventory Report Between Dates" id="menu_inventory_report_between_dates_xls_wzd" parent="stock.next_id_61" sequence="2"/>
+      
+    </data>
+</openerp>
