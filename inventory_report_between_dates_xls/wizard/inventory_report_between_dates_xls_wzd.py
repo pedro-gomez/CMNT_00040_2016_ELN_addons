@@ -162,7 +162,7 @@ class InventoryReportBetweenDatesXlsWzd(models.TransientModel):
                     ''' % (date_end, location_outsource, location_outsource, date_end, location_outsource, location_outsource)
 
         sql = '''
-            SELECT ROW_NUMBER() OVER(ORDER BY table_ck.code DESC) AS num ,
+            SELECT ROW_NUMBER() OVER(ORDER BY table_ck.code DESC) AS num,
                     table_ck.product_id, table_ck.name, table_ck.code,
                     COALESCE(sum(qty_dk),0) as qty_dk,
                     COALESCE(sum(qty_in_tk),0) as qty_in_tk,
@@ -173,7 +173,7 @@ class InventoryReportBetweenDatesXlsWzd(models.TransientModel):
                 LEFT JOIN (%s) table_out_tk on table_ck.product_id = table_out_tk.product_id
                 LEFT JOIN (%s) table_dk on table_ck.product_id = table_dk.product_id
                 GROUP BY table_ck.product_id, table_ck.name, table_ck.code
-        ''' %(sql_ck,sql_in_tk, sql_out_tk, sql_dk)
+        ''' %(sql_ck, sql_in_tk, sql_out_tk, sql_dk)
         self.env.cr.execute(sql)
         data = self.env.cr.dictfetchall()
         import ipdb; ipdb.set_trace()
