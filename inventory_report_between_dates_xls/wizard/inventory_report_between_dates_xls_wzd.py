@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
 #
-#    OpenERP, Open Source Management Solution
-#    Copyright (C) 2004-2010 Tiny SPRL (<http://tiny.be>).
+#    Copyright (C) 2004-2016 QUIVAL, S.A. All Rights Reserved
+#    $Pedro Gómez Campos$ <pegomez@elnogal.com>
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -18,7 +18,6 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-
 from openerp import models, fields, api
 
 
@@ -31,15 +30,12 @@ class InventoryReportBetweenDatesXlsWzd(models.TransientModel):
 
     @api.multi
     def _get_report_data(self):
-        #cr = self.cr
-        #uid = self.uid      
-        result = []
         list_product = {}
         date_start = self.date_from
         date_end = self.date_to
         location_outsource = self.location_id.id
-        sql_dk = '''
-            SELECT product_id, name, code, sum(product_qty_in - product_qty_out) as qty_dk
+        sql_from = '''
+            SELECT product_id, name, code, sum(product_qty_in - product_qty_out) as qty_from
                 FROM (SELECT sm.product_id, pt.name, pp.default_code as code,
                     COALESCE(sum(sm.product_qty), 0) AS product_qty_in,
                     0 AS product_qty_out
@@ -47,7 +43,7 @@ class InventoryReportBetweenDatesXlsWzd(models.TransientModel):
                 LEFT JOIN product_product pp ON sm.product_id = pp.id
                 LEFT JOIN product_template pt ON pp.product_tmpl_id = pt.id
                 LEFT JOIN stock_location sl ON sm.location_id = sl.id
-                WHERE date_trunc('day', sm.date) < '%s'
+                WHERE date_trunc('day', COALESCE(sm.effective_date, sm.date)) < '%s'
                 AND sm.state = 'done'
                 AND sm.location_id <> %s
                 AND sm.location_dest_id = %s
@@ -64,24 +60,24 @@ class InventoryReportBetweenDatesXlsWzd(models.TransientModel):
                 LEFT JOIN product_product pp ON sm.product_id = pp.id
                 LEFT JOIN product_template pt ON pp.product_tmpl_id = pt.id
                 LEFT JOIN stock_location sl ON sm.location_id = sl.id
-                WHERE date_trunc('day', sm.date) < '%s'
+                WHERE date_trunc('day', COALESCE(sm.effective_date, sm.date)) < '%s'
                 AND sm.state = 'done'
                 AND sm.location_id = %s
                 AND sm.location_dest_id <> %s
                 GROUP BY sm.product_id,
                 pt.name,
-                pp.default_code) table_dk GROUP BY product_id, name, code
+                pp.default_code) table_from GROUP BY product_id, name, code
         ''' % (date_start, location_outsource, location_outsource, date_start, location_outsource, location_outsource)
 
-        sql_in_tk = '''
+        sql_in = '''
             SELECT sm.product_id, pt.name, pp.default_code as code,
-                    COALESCE(sum(sm.product_qty), 0) AS qty_in_tk
+                    COALESCE(sum(sm.product_qty), 0) AS qty_in
                 FROM stock_move sm 
                 LEFT JOIN product_product pp ON sm.product_id = pp.id
                 LEFT JOIN product_template pt ON pp.product_tmpl_id = pt.id
                 LEFT JOIN stock_location sl ON sm.location_id = sl.id
-                WHERE date_trunc('day', sm.date) >= '%s'
-                AND date_trunc('day', sm.date) <= '%s'
+                WHERE date_trunc('day', COALESCE(sm.effective_date, sm.date)) >= '%s'
+                AND date_trunc('day', COALESCE(sm.effective_date, sm.date)) <= '%s'
                 AND sm.state = 'done'
                 AND sm.location_id <> %s
                 AND sm.location_dest_id = %s
@@ -90,15 +86,15 @@ class InventoryReportBetweenDatesXlsWzd(models.TransientModel):
                 pp.default_code
         '''% (date_start, date_end, location_outsource, location_outsource)
 
-        sql_out_tk = '''
+        sql_out = '''
             SELECT sm.product_id, pt.name, pp.default_code as code,
-                    COALESCE(sum(sm.product_qty), 0) AS qty_out_tk
+                    COALESCE(sum(sm.product_qty), 0) AS qty_out
                 FROM stock_move sm 
                 LEFT JOIN product_product pp ON sm.product_id = pp.id
                 LEFT JOIN product_template pt ON pp.product_tmpl_id = pt.id
                 LEFT JOIN stock_location sl ON sm.location_id = sl.id
-                WHERE date_trunc('day', sm.date) >= '%s'
-                AND date_trunc('day', sm.date) <= '%s'
+                WHERE date_trunc('day', COALESCE(sm.effective_date, sm.date)) >= '%s'
+                AND date_trunc('day', COALESCE(sm.effective_date, sm.date)) <= '%s'
                 AND sm.state = 'done'
                 AND sm.location_id = %s
                 AND sm.location_dest_id <> %s
@@ -107,8 +103,8 @@ class InventoryReportBetweenDatesXlsWzd(models.TransientModel):
                 pp.default_code
         '''% (date_start, date_end, location_outsource, location_outsource)
 
-        sql_ck = '''
-            SELECT product_id,name, code, sum(product_qty_in - product_qty_out) as qty_ck
+        sql_to = '''
+            SELECT product_id,name, code, sum(product_qty_in - product_qty_out) as qty_to
                 FROM  (SELECT sm.product_id, pt.name, pp.default_code as code,
                     COALESCE(sum(sm.product_qty),0) AS product_qty_in,
                     0 AS product_qty_out
@@ -116,7 +112,7 @@ class InventoryReportBetweenDatesXlsWzd(models.TransientModel):
                 LEFT JOIN product_product pp ON sm.product_id = pp.id
                 LEFT JOIN product_template pt ON pp.product_tmpl_id = pt.id
                 LEFT JOIN stock_location sl ON sm.location_id = sl.id
-                WHERE date_trunc('day', sm.date) <= '%s'
+                WHERE date_trunc('day', COALESCE(sm.effective_date, sm.date)) <= '%s'
                 AND sm.state = 'done'
                 AND sm.location_id <> %s
                 AND sm.location_dest_id = %s
@@ -128,63 +124,50 @@ class InventoryReportBetweenDatesXlsWzd(models.TransientModel):
 
                 SELECT sm.product_id,pt.name, pp.default_code as code,
                     0 AS product_qty_in,
-                    COALESCE(sum(sm.product_qty),0) AS product_qty_out
-
+                    COALESCE(sum(sm.product_qty), 0) AS product_qty_out
                 FROM stock_move sm 
                 LEFT JOIN product_product pp ON sm.product_id = pp.id
                 LEFT JOIN product_template pt ON pp.product_tmpl_id = pt.id
                 LEFT JOIN stock_location sl ON sm.location_id = sl.id
-                WHERE date_trunc('day', sm.date) <= '%s'
+                WHERE date_trunc('day', COALESCE(sm.effective_date, sm.date)) <= '%s'
                 AND sm.state = 'done'
                 AND sm.location_id = %s
                 AND sm.location_dest_id <> %s
                 GROUP BY sm.product_id,
                 pt.name,
-                pp.default_code) table_ck GROUP BY product_id, name, code
+                pp.default_code) table_to GROUP BY product_id, name, code
         ''' % (date_end, location_outsource, location_outsource, date_end, location_outsource, location_outsource)
 
         sql = '''
-            SELECT ROW_NUMBER() OVER(ORDER BY table_ck.code DESC) AS num,
-                    table_ck.product_id, table_ck.name, table_ck.code,
-                    COALESCE(sum(qty_dk), 0) as qty_dk,
-                    COALESCE(sum(qty_in_tk), 0) as qty_in_tk,
-                    COALESCE(sum(qty_out_tk), 0) as qty_out_tk,
-                    COALESCE(sum(qty_ck), 0) as qty_ck
-            FROM  (%s) table_ck
-                LEFT JOIN (%s) table_in_tk on table_ck.product_id = table_in_tk.product_id
-                LEFT JOIN (%s) table_out_tk on table_ck.product_id = table_out_tk.product_id
-                LEFT JOIN (%s) table_dk on table_ck.product_id = table_dk.product_id
-                GROUP BY table_ck.product_id, table_ck.name, table_ck.code
-        ''' %(sql_ck, sql_in_tk, sql_out_tk, sql_dk)
+            SELECT ROW_NUMBER() OVER(ORDER BY table_to.code DESC) AS num,
+                    table_to.product_id, table_to.name, table_to.code,
+                    COALESCE(sum(qty_from), 0) as qty_from,
+                    COALESCE(sum(qty_in), 0) as qty_in,
+                    COALESCE(sum(qty_out), 0) as qty_out,
+                    COALESCE(sum(qty_to), 0) as qty_to
+            FROM  (%s) table_to
+                LEFT JOIN (%s) table_in on table_to.product_id = table_in.product_id
+                LEFT JOIN (%s) table_out on table_to.product_id = table_out.product_id
+                LEFT JOIN (%s) table_from on table_to.product_id = table_from.product_id
+                GROUP BY table_to.product_id, table_to.name, table_to.code
+        ''' %(sql_to, sql_in, sql_out, sql_from)
         self.env.cr.execute(sql)
         data = self.env.cr.dictfetchall()
         for i in data:
-            #list_product.append({   'num': i['num'],
-            #                        'name': i['name'],
-            #                        'code': i['code'],
-            #                        'qty_dk': i['qty_dk'],
-            #                        'qty_in_tk': i['qty_in_tk'],
-            #                        'qty_out_tk': i['qty_out_tk'],
-            #                        'qty_ck': i['qty_ck'],
-            #                     })
             list_product[i['num']] = {
                                     'name': i['name'],
                                     'code': i['code'],
-                                    'qty_dk': i['qty_dk'],
-                                    'qty_in_tk': i['qty_in_tk'],
-                                    'qty_out_tk': i['qty_out_tk'],
-                                    'qty_ck': i['qty_ck'],
+                                    'qty_from': i['qty_from'],
+                                    'qty_in': i['qty_in'],
+                                    'qty_out': i['qty_out'],
+                                    'qty_to': i['qty_to'],
                                  }
         return list_product
     
     @api.multi
     def create_xls_report(self):
         self.ensure_one()
-        res = self._get_report_data()
-        data = {}
-        #for acc in res:
-        #    data[acc.num] = res[acc]
-        data = res
+        data = self._get_report_data()
         return {'type': 'ir.actions.report.xml',
                 'report_name': 'inventory_report_between_dates_xls',
                 'datas': data}

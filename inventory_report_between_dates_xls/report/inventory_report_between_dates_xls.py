@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 ##############################################################################
 #
-#    OpenERP, Open Source Management Solution
-#    Copyright (C) 2004-2010 Tiny SPRL (<http://tiny.be>).
+#    Copyright (C) 2004-2016 QUIVAL, S.A. All Rights Reserved
+#    $Pedro Gómez Campos$ <pegomez@elnogal.com>
 #
 #    This program is free software: you can redistribute it and/or modify
 #    it under the terms of the GNU Affero General Public License as
@@ -18,7 +18,6 @@
 #    along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #
 ##############################################################################
-
 import xlwt
 from openerp.addons.report_xls.report_xls import report_xls
 from datetime import datetime
@@ -40,7 +39,7 @@ class InventoryReportBetweenDatesXlsParser(report_sxw.rml_parse):
 
 
 class InventoryReportBetweenDatesXls(report_xls):
-    column_sizes = [30, 20, 10, 10, 20, 15, 15, 15, 15, 20, 15, 15, 15, 15]
+    column_sizes = [8, 10, 40, 15, 15, 15, 15, 15, 15, 20, 15, 15, 15, 15]
 
     def __init__(self, name, table, rml=False, parser=False,
                  header=True, store=False):
@@ -65,8 +64,8 @@ class InventoryReportBetweenDatesXls(report_xls):
     def global_initializations(self, wb, _p, xlwt, _xs, objects, data):
         # this procedure will initialise variables and Excel cell styles and
         # return them as global ones
-        self.ws = wb.add_sheet(_("Prueba Informe diario de ventas"))
-        self.nbr_columns = 14
+        self.ws = wb.add_sheet(_("Inventario entre fechas"))
+        self.nbr_columns = 7
         # Tytle style
         self.style_font12 = xlwt.easyxf(_xs['xls_title'] + _xs['center'])
         # Header Style
@@ -76,26 +75,8 @@ class InventoryReportBetweenDatesXls(report_xls):
         self.report_date = objects.date_from
 
     def print_title(self, objects, row_pos):
-        date = objects.date_from
-        date_split = date.split('-')
-        year = date_split[0]
-        months = {
-            '01': _('ENERO'),
-            '02': _('FEBRERO'),
-            '03': _('MARZO'),
-            '04': _('ABRIL'),
-            '05': _('MAYO'),
-            '06': _('JUNIO'),
-            '07': _('JULIO'),
-            '08': _('AGOSTO'),
-            '09': _('SEPTIEMBRE'),
-            '10': _('OCTUBRE'),
-            '11': _('NOBIEMBRE'),
-            '12': _('DICIEMBRE'),
-        }
-        month = months[date_split[1]]
-        report_name = ' - '.join(["INFORME DIARIO DE VENTAS", month + ' ' +
-                                 year])
+        report_name = ' // '.join(["INVENTARIO ENTRE FECHAS", objects.date_from + ' a ' +
+                                 objects.date_to])
         c_specs = [('report_name', self.nbr_columns, 0, 'text', report_name)]
         row_data = self.xls_row_template(c_specs, [x[0] for x in c_specs])
         row_pos = self.xls_write_row(
@@ -116,22 +97,13 @@ class InventoryReportBetweenDatesXls(report_xls):
         style1 = self.style_bold_blue_center
         # PART 1
         c_specs = [
-            ('a', 1, 0, 'text', None, None, None),
-            ('b', 3, 0, 'text', None, None, None),
-            ('c', 5, 0, 'text', _('EUROS'), None, style1),
-            ('d', 5, 0, 'text', _('KILOS'), None, style1),
-        ]
-        row_data = self.xls_row_template(c_specs, [x[0] for x in c_specs])
-        row_pos = self.xls_write_row(self.ws, row_pos, row_data)
-        # PART 2
-        c_specs = [
             ('a', 1, 0, 'text', _('id'), None, style1),
-            ('b', 1, 0, 'text', _('CODIGO'), None, style1),
-            ('c', 1, 0, 'text', _('DESCRIPCION'), None, style1),
-            ('d', 1, 0, 'text', _('STOCK I'), None, style1),
-            ('e', 1, 0, 'text', _('ENTRADAS'), None, style1),
-            ('f', 1, 0, 'text', _('SALIDAS'), None, style1),
-            ('g', 1, 0, 'text', _('FINAL'), None, style1),
+            ('b', 1, 0, 'text', _('Código'), None, style1),
+            ('c', 1, 0, 'text', _('Descripción'), None, style1),
+            ('d', 1, 0, 'text', _('Stock inicial'), None, style1),
+            ('e', 1, 0, 'text', _('Entradas'), None, style1),
+            ('f', 1, 0, 'text', _('Salidas'), None, style1),
+            ('g', 1, 0, 'text', _('Stock final'), None, style1),
         ]
         row_data = self.xls_row_template(c_specs, [x[0] for x in c_specs])
         row_pos = self.xls_write_row(self.ws, row_pos, row_data)
@@ -144,10 +116,10 @@ class InventoryReportBetweenDatesXls(report_xls):
                 ('a', 1, 0, 'text', acc_name, None, None),
                 ('b', 1, 0, 'text', val['code'], None, None),
                 ('c', 1, 0, 'text', val['name'], None, None),
-                ('d', 1, 0, 'number', str(round(val['qty_dk'], 2)), None, None),
-                ('e', 1, 0, 'number', str(round(val['qty_in_tk'], 2)), None, None),
-                ('f', 1, 0, 'number', str(round(val['qty_out_tk'], 2)), None, None),
-                ('g', 1, 0, 'number', str(round(val['qty_ck'], 2)), None, None),
+                ('d', 1, 0, 'number', str(round(val['qty_from'], 2)), None, None),
+                ('e', 1, 0, 'number', str(round(val['qty_in'], 2)), None, None),
+                ('f', 1, 0, 'number', str(round(val['qty_out'], 2)), None, None),
+                ('g', 1, 0, 'number', str(round(val['qty_to'], 2)), None, None),
             ]
             row_data = self.xls_row_template(c_specs, [x[0] for x in c_specs])
             row_pos = self.xls_write_row(self.ws, row_pos, row_data)
@@ -156,15 +128,14 @@ class InventoryReportBetweenDatesXls(report_xls):
     def generate_xls_report(self, _p, _xs, data, objects, wb):
         # Initializations
         self.global_initializations(wb, _p, xlwt, _xs, objects, data)
+        
         row_pos = 0
         # Report Title
         row_pos = self.print_title(objects, row_pos)
         # Print empty row to define column sizes
         row_pos = self.print_empty_row(row_pos)
-
         # Headers
         row_pos = self.print_header_titles(row_pos)
-
         # Values
         row_pos = self._print_report_values(data, row_pos)
 
