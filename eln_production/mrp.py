@@ -627,10 +627,10 @@ class mrp_production(osv.osv):
         'date_planned': fields.datetime('Scheduled Date', required=True, select=1, copy=False),  #  Avoid Readonly
         'routing_id': fields.many2one('mrp.routing', string='Routing', on_delete='set null', readonly=True, states={'draft':[('readonly',False)],'confirmed':[('readonly',False)],'ready':[('readonly',False)]}, help="The list of operations (list of work centers) to produce the finished product. The routing is mainly used to compute work center costs during operations and to plan future loads on work centers based on production plannification."),
         'date_end_planned': fields.datetime('Date end Planned'),
-        'state': fields.selection([('draft','New'),('confirmed','Waiting Goods'),('ready','Ready to Produce'),('in_production','Production Started'),('finished', 'Finished'),('validated', 'Validated'),('closed', 'Closed'),('cancel','Cancelled'),('done','Done'),('reopen', 'Reopen')],'State', readonly=True,
+        'state': fields.selection([('draft','New'),('confirmed','Waiting Goods'),('ready','Ready to Produce'),('in_production','Production Started'),('finished', 'Finished'),('validated', 'Validated'),('closed', 'Closed'),('cancel','Cancelled'),('done','Done')],'State', readonly=True,
                                     help='When the production order is created the state is set to \'Draft\'.\n If the order is confirmed the state is set to \'Waiting Goods\'.\n If any exceptions are there, the state is set to \'Picking Exception\'.\
                                     \nIf the stock is available then the state is set to \'Ready to Produce\'.\n When the production gets started then the state is set to \'In Production\'.\n When the production is over, the state is set to \'Done\'.'),
-        'note': fields.text('Notes', readonly = False, states={'cancel':[('readonly', True)], 'done':[('readonly', True)]}),
+        'note': fields.text('Notes'),
         'workcenter_lines': fields.one2many('mrp.production.workcenter.line', 'production_id', 'Work Centers Utilisation'),  # remove readonly state
         'origin': fields.char('Source Document', readonly=False,  states={'cancel':[('readonly', True)], 'done':[('readonly', True)]},
             help="Reference of the document that generated this production order request.", copy=False),
@@ -863,17 +863,22 @@ class mrp_production(osv.osv):
 
                 if produce_product.product_id.id == production.product_id.id:
                     main_production_move = produce_product.id
-            self.signal_workflow(cr, uid, [production_id], 'button_finished_validated')
+
+            if not production.move_created_ids and \
+                not (context.get('default_mode', False) and context['default_mode'] == 'consume'):
+                self.signal_workflow(cr, uid, [production_id], 'button_finished_validated')
         else:
             if not main_production_move:
                 main_production_move = production.move_created_ids2 and production.move_created_ids2[0].id
             context.update({'main_production_move': main_production_move})  # Para escribirlo en el write y en el action_consume()
             res = super(mrp_production, self).action_produce(cr, uid, production_id, production_qty, production_mode, wiz=wiz, context=context)
+            if not production.move_created_ids and \
+                not (context.get('default_mode', False) and context['default_mode'] == 'consume'):
+                self.signal_workflow(cr, uid, [production_id], 'button_finished_validated')
             if context.get('default_mode', False) and context['default_mode'] == 'consume':  # Custom behaivor, set closed state
                 self.signal_workflow(cr, uid, [production_id], 'button_validated_closed')
+
         return True
-
-
 
     def action_finished(self, cr, uid, ids, context=None):
         print "action_finished"
@@ -939,12 +944,12 @@ class mrp_production(osv.osv):
             context = {}
 
         res = super(mrp_production, self).action_cancel(cr, uid, ids, context=context)
-
         if res:
-            workflow = netsvc.LocalService("workflow")
-            for production in self.browse(cr, uid, ids, context=context):
-                if production.state == 'cancel':
-                    workflow.trg_validate(uid, 'mrp.production', production.id, 'button_cancel', cr)
+            # Put related procurements in cancel state
+            proc_obj = self.pool.get("procurement.order")
+            procs = proc_obj.search(cr, uid, [('production_id', 'in', ids)], context=context)
+            if procs:
+                proc_obj.write(cr, uid, procs, {'state': 'cancel'}, context=context)
 
         return res
 
@@ -969,7 +974,8 @@ class mrp_production(osv.osv):
         for prod in self.browse(cr, uid, ids, context=context):
             bom = prod.bom_id
             finished_qty = sum([x.product_uom_qty
-                                for x in prod.move_created_ids2])
+                                for x in prod.move_created_ids2 
+                                if x.state in ('done') and not x.scrapped])
             factor = uom_obj._compute_qty(cr, uid, prod.product_uom.id,
                                           finished_qty,
                                           bom.product_uom.id)
@@ -985,6 +991,31 @@ class mrp_production(osv.osv):
             theo_cost = tmpl_obj._calc_price(cr, uid, bom, test=True,
                                              context=context)
             prod.write({'theo_cost': finished_qty * theo_cost})
+        return res
+
+    def unlink(self, cr, uid, ids, context=None):
+        """ Unlink the production order and related stock moves.
+        @return: True
+        """
+        res = {}
+        if context is None:
+            context = {}
+
+        move_obj = self.pool.get('stock.move')
+
+        if any(x.state not in ('draft', 'confirmed', 'ready', 'in_production', 'cancel') for x in self.browse(cr, uid, ids, context=context)):
+            raise osv.except_osv(_('Error!'),  _('You cannot delete a production which is not cancelled.'))
+        
+        for production in self.browse(cr, uid, ids, context=context):
+            if production.state in ('draft', 'confirmed', 'ready', 'in_production'):
+                super(mrp_production, self).action_cancel(cr, uid, [production.id], context=context)
+            if production.state in ('cancel'):
+                move_obj.unlink(cr, uid, [x.id for x in production.move_created_ids2], context=context)
+                move_obj.unlink(cr, uid, [x.id for x in production.move_lines2], context=context)
+                res = super(mrp_production, self).unlink(cr, uid, [production.id], context=context)
+            else:
+                raise osv.except_osv(_('Error!'),  _('You cannot delete a production which is not cancelled.'))
+
         return res
 
 mrp_production()
