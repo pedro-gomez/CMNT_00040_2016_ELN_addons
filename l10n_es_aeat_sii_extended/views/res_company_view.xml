@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Copyright 2017 Ignacio Ibeas <ignacio@acysos.com> License AGPL-3.0 or
+    later (http://www.gnu.org/licenses/agpl). -->
+<openerp>
+    <data>
+        <record id="view_company_sii_form_extended" model="ir.ui.view">
+            <field name="name">res.company.sii.form.extended</field>
+            <field name="model">res.company</field>
+            <field name="inherit_id" ref="l10n_es_aeat_sii.view_company_sii_form" />
+            <field name="arch" type="xml">
+                <group name="sii_config" position="inside">
+                    <field name="sii_check_invoice_date"
+                               attrs="{'invisible': [('sii_method', '!=', 'auto')]}"/>
+                </group>
+            </field>
+        </record>
+    </data>
+</openerp>
