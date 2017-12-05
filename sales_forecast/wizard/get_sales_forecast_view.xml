@@ -12,7 +12,9 @@
                         <field name="name"/>
                         <field name="account_id"/>
                         <field name="include_child_ids"/>
+                        <field name="include_refunds"/>
                         <field name="percent_increase"/>
+                        <field name="date_start"/>
                     </group>
                     <newline/>
                     <footer>

@@ -19,7 +19,8 @@
 #
 ##############################################################################
 from openerp.osv import osv, fields
-
+from dateutil.relativedelta import relativedelta
+from datetime import datetime, date, timedelta
 import calendar
 import time
 
@@ -30,11 +31,31 @@ class get_sales_forecast(osv.osv_memory):
         'name': fields.char('Name', size=64, required=True),
         'account_id': fields.many2one('account.analytic.account', 'Account', required=True),
         'include_child_ids': fields.boolean('Include Child Accounts'),
-        'percent_increase': fields.float('% Increase', digits=(16,2))
+        'include_refunds': fields.boolean('Include Refunds'),
+        'percent_increase': fields.float('% Increase', digits=(16,2)),
+        'date_start': fields.date('Start Date'),
     }
     _defaults = {
         'include_child_ids': True,
+        'include_refunds': True,
     }
+
+    def default_get(self, cr, uid, fields, context=None):
+        """ Get default values
+        @param self: The object pointer.
+        @param cr: A database cursor
+        @param uid: ID of the user currently logged in
+        @param fields: List of fields for default value
+        @param context: A standard dictionary
+        @return: default values of fields
+        """
+        if context is None:
+            context = {}
+        res = super(get_sales_forecast, self).default_get(cr, uid, fields, context=context)
+        date_today = datetime.now()
+        date_start = date(year=date_today.year, month=1, day=1) - relativedelta(years=1)
+        res.update({'date_start': date_start.strftime('%Y-%m-%d')})
+        return res
 
     def get_sales_forecast(self, cr, uid, ids, context=None):
         """ Get forecast sales for the selected analytic account and,
@@ -73,7 +94,10 @@ class get_sales_forecast(osv.osv_memory):
                 form_analytic_ids = [form.account_id.id]
         
             #create forecast sales without lines
-            new_id = forecast_obj.create(cr, uid, {'name': form.name,
+            date_from = datetime.strptime(form.date_start, '%Y-%m-%d') + relativedelta(day=1)
+            date_to = datetime.strptime(form.date_start, '%Y-%m-%d') + relativedelta(day=31, months=11)
+            forecast_name = '%s - (from: %s to: %s)' % (form.name, date_from.strftime('%d-%m-%Y'), date_to.strftime('%d-%m-%Y'))
+            new_id = forecast_obj.create(cr, uid, {'name': forecast_name,
                                                    'analytic_id': form.account_id.id,
                                                    'commercial_id': uid,
                                                    'date': time.strftime('%d-%m-%Y'),
@@ -81,17 +105,18 @@ class get_sales_forecast(osv.osv_memory):
                                                    'state': 'draft'
                                                     })
             for month in range(0, 12):
-                #I find all the invoices in for each month last year.
+                #I find all the invoices for each month in one year.
+                date_from = datetime.strptime(form.date_start, '%Y-%m-%d') + relativedelta(months=month, day=1)
+                date_to = datetime.strptime(form.date_start, '%Y-%m-%d') + relativedelta(months=month, day=31)
                 domain = \
-                    [('date_invoice', '>=', str('01-' + str(month + 1) +
-                        '-' + str(int(time.strftime('%d-%m-%Y')[6:]) - 1))),
-                    ('date_invoice', '<=',
-                        str((calendar.monthrange((int(time.strftime('%d-%m-%Y')[6:]) - 1),
-                        (month + 1))[1])) + '-' + str(month + 1) + '-' +
-                        str(int(time.strftime('%d-%m-%Y')[6:]) - 1)),
-                    ('type', 'in', ['out_invoice', 'out_refund']),
+                    [('date_invoice', '>=', date_from.strftime('%d-%m-%Y')),
+                    ('date_invoice', '<=', date_to.strftime('%d-%m-%Y')),
                     ('state', 'in', ['open', 'paid']),
                     ('company_id', '=', company_id)]
+                if form.include_refunds:
+                    domain += [('type', 'in', ['out_invoice', 'out_refund'])]
+                else:
+                    domain += [('type', '=', 'out_invoice')]
                 invoice_ids = inv_obj.search(cr, uid, domain)
                 if invoice_ids:
                     #If invoices, step through lines that share the selected
